@@ -89,6 +89,9 @@ async function replyLineMessage(replyToken: string | undefined, text: string, ch
     return;
   }
 
+  const replyText = `【LINE v2 TEST】\n${text}`;
+  console.log("[line webhook] replyText", replyText);
+
   const response = await fetch(`${LINE_API_BASE}/v2/bot/message/reply`, {
     method: "POST",
     headers: {
@@ -100,7 +103,7 @@ async function replyLineMessage(replyToken: string | undefined, text: string, ch
       messages: [
         {
           type: "text",
-          text
+          text: replyText
         }
       ]
     })
