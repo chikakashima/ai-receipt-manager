@@ -33,10 +33,22 @@ function getLineEnv() {
   return { channelAccessToken, channelSecret };
 }
 
-function getAppBaseUrl() {
+function getAppBaseUrl(headers?: Headers) {
   const explicitUrl = process.env.APP_BASE_URL?.trim();
   if (explicitUrl) {
     return explicitUrl.replace(/\/$/, "");
+  }
+
+  const forwardedProto = headers?.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const forwardedHost = headers?.get("x-forwarded-host")?.split(",")[0]?.trim();
+  if (forwardedHost) {
+    return `${forwardedProto || "https"}://${forwardedHost}`.replace(/\/$/, "");
+  }
+
+  const host = headers?.get("host")?.trim();
+  if (host) {
+    const protocol = host.includes("localhost") || host.startsWith("127.0.0.1") ? "http" : "https";
+    return `${protocol}://${host}`.replace(/\/$/, "");
   }
 
   const vercelUrl = process.env.VERCEL_URL?.trim();
@@ -47,8 +59,8 @@ function getAppBaseUrl() {
   return "http://localhost:3000";
 }
 
-function buildReceiptAdminUrl(lineUserId: string | undefined) {
-  const url = new URL("/receipts", getAppBaseUrl());
+function buildReceiptAdminUrl(lineUserId: string | undefined, headers?: Headers) {
+  const url = new URL("/receipts", getAppBaseUrl(headers));
 
   if (lineUserId) {
     url.searchParams.set("line_user_id", lineUserId);
@@ -120,7 +132,7 @@ async function fetchLineImage(messageId: string, channelAccessToken: string) {
   return new Blob([arrayBuffer], { type: contentType });
 }
 
-async function handleLineEvent(event: LineWebhookEvent, channelAccessToken: string) {
+async function handleLineEvent(event: LineWebhookEvent, channelAccessToken: string, headers: Headers) {
   if (event.type !== "message" || event.message?.type !== "image" || !event.message.id) {
     await replyLineMessage(
       event.replyToken,
@@ -146,11 +158,11 @@ async function handleLineEvent(event: LineWebhookEvent, channelAccessToken: stri
     });
 
     const warning = result.storageWarning ? "\n画像URLは保存されていない可能性があります。" : "";
-    const adminUrl = buildReceiptAdminUrl(event.source?.userId);
+    const adminUrl = buildReceiptAdminUrl(event.source?.userId, headers);
     await replyLineMessage(
       event.replyToken,
       [
-        "領収書を保存しました。",
+        "領収書を保存しました。v2",
         `店舗名：${receipt.store_name || "未取得"}`,
         `合計金額：${receipt.total_amount}円`,
         "管理画面：",
@@ -185,7 +197,7 @@ export async function POST(request: Request) {
     const payload = JSON.parse(body) as LineWebhookBody;
     const events = payload.events || [];
 
-    await Promise.all(events.map((event) => handleLineEvent(event, channelAccessToken)));
+    await Promise.all(events.map((event) => handleLineEvent(event, channelAccessToken, request.headers)));
 
     return NextResponse.json({ ok: true });
   } catch (error) {
