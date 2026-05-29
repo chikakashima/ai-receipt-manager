@@ -89,7 +89,7 @@ async function replyLineMessage(replyToken: string | undefined, text: string, ch
     return;
   }
 
-  const replyText = `【LINE v2 TEST】\n${text}`;
+  const replyText = text;
   console.log("[line webhook] replyText", replyText);
 
   const response = await fetch(`${LINE_API_BASE}/v2/bot/message/reply`, {
@@ -135,6 +135,19 @@ async function fetchLineImage(messageId: string, channelAccessToken: string) {
   return new Blob([arrayBuffer], { type: contentType });
 }
 
+function formatLineDate(value: string) {
+  const [year, month, day] = value.slice(0, 10).split("-");
+  if (!year || !month || !day) {
+    return value || "未取得";
+  }
+
+  return `${year}/${month}/${day}`;
+}
+
+function formatLineAmount(value: number) {
+  return new Intl.NumberFormat("ja-JP").format(value);
+}
+
 async function handleLineEvent(event: LineWebhookEvent, channelAccessToken: string, headers: Headers) {
   if (event.type !== "message" || event.message?.type !== "image" || !event.message.id) {
     await replyLineMessage(
@@ -165,10 +178,15 @@ async function handleLineEvent(event: LineWebhookEvent, channelAccessToken: stri
     await replyLineMessage(
       event.replyToken,
       [
-        "領収書を保存しました。v2",
+        "領収書を保存しました。",
+        "",
         `店舗名：${receipt.store_name || "未取得"}`,
-        `合計金額：${receipt.total_amount}円`,
-        "管理画面：",
+        `利用日：${formatLineDate(receipt.receipt_date)}`,
+        `合計金額：${formatLineAmount(receipt.total_amount)}円`,
+        `税額：${formatLineAmount(receipt.tax_amount)}円`,
+        `勘定科目：${receipt.category || "未取得"}`,
+        "",
+        "管理画面はこちら：",
         adminUrl,
         warning
       ]
