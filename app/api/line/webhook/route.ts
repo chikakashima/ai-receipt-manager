@@ -33,6 +33,30 @@ function getLineEnv() {
   return { channelAccessToken, channelSecret };
 }
 
+function getAppBaseUrl() {
+  const explicitUrl = process.env.APP_BASE_URL?.trim();
+  if (explicitUrl) {
+    return explicitUrl.replace(/\/$/, "");
+  }
+
+  const vercelUrl = process.env.VERCEL_URL?.trim();
+  if (vercelUrl) {
+    return `https://${vercelUrl}`.replace(/\/$/, "");
+  }
+
+  return "http://localhost:3000";
+}
+
+function buildReceiptAdminUrl(lineUserId: string | undefined) {
+  const url = new URL("/receipts", getAppBaseUrl());
+
+  if (lineUserId) {
+    url.searchParams.set("line_user_id", lineUserId);
+  }
+
+  return url.toString();
+}
+
 function verifyLineSignature(body: string, signature: string | null, channelSecret: string) {
   if (!signature) {
     return false;
@@ -122,9 +146,19 @@ async function handleLineEvent(event: LineWebhookEvent, channelAccessToken: stri
     });
 
     const warning = result.storageWarning ? "\n画像URLは保存されていない可能性があります。" : "";
+    const adminUrl = buildReceiptAdminUrl(event.source?.userId);
     await replyLineMessage(
       event.replyToken,
-      `保存しました。\n店舗名: ${receipt.store_name || "未取得"}\n合計金額: ${receipt.total_amount}円${warning}`,
+      [
+        "領収書を保存しました。",
+        `店舗名：${receipt.store_name || "未取得"}`,
+        `合計金額：${receipt.total_amount}円`,
+        "管理画面：",
+        adminUrl,
+        warning
+      ]
+        .filter(Boolean)
+        .join("\n"),
       channelAccessToken
     );
   } catch (error) {

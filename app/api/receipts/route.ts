@@ -15,14 +15,22 @@ function readText(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const url = new URL(request.url);
+    const lineUserId = url.searchParams.get("line_user_id")?.trim();
     const supabase = getSupabaseAdmin();
-    const { data, error } = await supabase
+    let query = supabase
       .from("receipts")
       .select("*")
       .order("receipt_date", { ascending: false })
       .order("created_at", { ascending: false });
+
+    if (lineUserId) {
+      query = query.eq("line_user_id", lineUserId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       throw error;

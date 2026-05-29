@@ -7,8 +7,17 @@ import { getDashboardSummary } from "@/lib/receipt-fetch";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
-  const summary = await getDashboardSummary().catch(() => null);
+type PageProps = {
+  searchParams?: Promise<{
+    line_user_id?: string;
+  }>;
+};
+
+export default async function DashboardPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const lineUserId = params?.line_user_id?.trim();
+  const query = lineUserId ? `?line_user_id=${encodeURIComponent(lineUserId)}` : "";
+  const summary = await getDashboardSummary({ lineUserId }).catch(() => null);
 
   if (!summary) {
     return (
@@ -43,7 +52,7 @@ export default async function DashboardPage() {
           領収書を登録
         </Link>
         <a
-          href="/api/receipts/csv"
+          href={`/api/receipts/csv${query}`}
           className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-line bg-white px-4 py-3 text-sm font-bold text-ink sm:flex-none"
         >
           <Download size={18} aria-hidden="true" />
@@ -54,7 +63,7 @@ export default async function DashboardPage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-xl font-bold">最近の領収書</h1>
-          <Link href="/receipts" className="inline-flex items-center gap-1 text-sm font-bold text-mint">
+          <Link href={`/receipts${query}`} className="inline-flex items-center gap-1 text-sm font-bold text-mint">
             一覧
             <ArrowRight size={16} aria-hidden="true" />
           </Link>

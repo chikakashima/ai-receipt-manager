@@ -46,6 +46,8 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 SUPABASE_STORAGE_BUCKET=receipts
 
+APP_BASE_URL=https://your-app.vercel.app
+
 LINE_CHANNEL_ACCESS_TOKEN=
 LINE_CHANNEL_SECRET=
 ```
@@ -57,6 +59,7 @@ LINE_CHANNEL_SECRET=
 - `NEXT_PUBLIC_SUPABASE_URL`: SupabaseプロジェクトURL
 - `SUPABASE_SERVICE_ROLE_KEY`: Supabaseのservice role key。`sb_publishable_...`ではなく、管理画面のAPI Keysにあるservice role用の秘密鍵を設定します。
 - `SUPABASE_STORAGE_BUCKET`: 領収書画像を保存するStorage bucket名
+- `APP_BASE_URL`: LINE返信メッセージに含める管理画面URLのベースURL
 - `LINE_CHANNEL_ACCESS_TOKEN`: LINE Messaging APIのチャネルアクセストークン
 - `LINE_CHANNEL_SECRET`: LINE Messaging APIのチャネルシークレット
 
@@ -150,7 +153,21 @@ Vercelにデプロイした後は、Vercelの本番URLを使います。
 https://your-app.vercel.app/api/line/webhook
 ```
 
+Vercelの環境変数には`APP_BASE_URL=https://your-app.vercel.app`も設定してください。これにより、LINE返信内の管理画面URLが本番URLになります。
+
 Webhookの利用をオンにし、LINE Developersコンソールの`検証`ボタンで疎通確認してください。画像メッセージを送ると、Webhookが画像を取得し、AI解析後にSupabaseへ保存します。
+
+LINEから登録した場合、返信メッセージには送信者本人の`line_user_id`付き管理画面URLが含まれます。
+
+```text
+領収書を保存しました。
+店舗名：〇〇
+合計金額：〇〇円
+管理画面：
+https://your-app.vercel.app/receipts?line_user_id=Uxxxxxxxx
+```
+
+このURLを開くと、その`line_user_id`に紐づく領収書だけを一覧表示します。CSV出力も同じ`line_user_id`で絞り込まれます。
 
 ## ngrokを使ったローカルテスト方法
 
@@ -182,11 +199,13 @@ https://xxxxx.ngrok-free.app/api/line/webhook
 - Supabase Storage bucketはSQLでpublicにしています。実運用では認証付きのprivate bucketも検討してください。
 - `Bucket not found`が出る場合は、Supabase SQL Editorで`supabase/schema.sql`を実行済みか、`.env.local`の`SUPABASE_STORAGE_BUCKET=receipts`が保存されているかを確認してください。あわせて、`SUPABASE_SERVICE_ROLE_KEY`にpublishable keyではなくservice role keyを設定しているか確認してください。環境変数を変更した後は開発サーバーを再起動してください。
 - AIの読み取り結果は誤る可能性があるため、保存前に必ず確認・修正する前提です。
+- `line_user_id`をURLクエリに含める方式はMVP向けの簡易実装です。本格運用ではログイン認証、または推測困難なトークン付きURLでアクセス制御してください。
 
 ## 今後の改善案
 
 - ログイン機能
 - ユーザー別データ管理
+- トークン付き管理画面URL
 - 会計ソフト向けCSV対応
 - 領収書の検索・絞り込み
 - 月別・勘定科目別の集計

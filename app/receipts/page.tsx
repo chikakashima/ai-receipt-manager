@@ -5,8 +5,19 @@ import { getReceipts } from "@/lib/receipt-fetch";
 
 export const dynamic = "force-dynamic";
 
-export default async function ReceiptsPage() {
-  const receipts = await getReceipts().catch(() => null);
+type PageProps = {
+  searchParams?: Promise<{
+    line_user_id?: string;
+  }>;
+};
+
+export default async function ReceiptsPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const lineUserId = params?.line_user_id?.trim();
+  const csvHref = lineUserId
+    ? `/api/receipts/csv?line_user_id=${encodeURIComponent(lineUserId)}`
+    : "/api/receipts/csv";
+  const receipts = await getReceipts({ lineUserId }).catch(() => null);
 
   if (!receipts) {
     return (
@@ -24,10 +35,12 @@ export default async function ReceiptsPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">領収書一覧</h1>
-          <p className="mt-1 text-sm text-ink/65">{receipts.length}件の経費データ</p>
+          <p className="mt-1 text-sm text-ink/65">
+            {receipts.length}件の経費データ{lineUserId ? " / LINEユーザー別" : ""}
+          </p>
         </div>
         <a
-          href="/api/receipts/csv"
+          href={csvHref}
           className="inline-flex items-center justify-center gap-2 rounded-lg bg-ink px-4 py-3 text-sm font-bold text-white"
         >
           <Download size={18} aria-hidden="true" />
